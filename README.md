@@ -1,8 +1,23 @@
-# Amanicare
-Privacy-preserving lab anomaly detection system for clinical triage.
+# AmaniCare (Practice Build)
 
-- Flags abnormal lab values (glucose, creatinine, electrolytes, etc.)
-- Provides an anomaly type (renal, infection, glycemic, anemia, electrolyte)
-- Stores model predictions in a decentralized way (IPFS)
+AmaniCare is a privacy-preserving clinical lab anomaly detection system
+designed for low-resource healthcare settings.
 
-Scope for hackathon: only lab anomaly detection; no full diagnosis.
+This repository currently contains a **practice build** used to:
+- Validate technical feasibility
+- Test model choices
+- Prepare for live hackathon development
+
+⚠️ The official hackathon submission will be built from scratch
+on a dedicated hackathon branch during the event.
+
+## Core Idea
+Detect abnormal lab values (blood chemistry, metabolic panels, infection markers)
+and return:
+- Anomaly flag
+- Risk score
+- Possible clinical interpretation
+- Verifiable result provenance (IPFS)
+
+## Status
+Practice / Pre-hackathon preparation
