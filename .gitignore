@@ -1,0 +1,21 @@
+# virtual env
+venv/
+
+# databases
+*.db
+
+# outputs
+output/
+predictions.db
+results.db
+
+# frontend junk
+frontend/npm
+frontend/cls
+
+# python
+__pycache__/
+*.pyc
+
+# misc
+.env
