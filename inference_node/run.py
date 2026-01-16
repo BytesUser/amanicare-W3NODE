@@ -13,6 +13,9 @@ import json
 import time
 import uuid
 import os
+from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 ML_DIR = BASE_DIR / "ml"
@@ -50,6 +53,10 @@ conn.commit()
 
 
 app = FastAPI()
+
+# Serve frontend static files
+FRONTEND_DIR = BASE_DIR / "frontend"
+app.mount("/static", StaticFiles(directory=FRONTEND_DIR), name="static")
 
 
 # allow any origin for hackathon/demo. Replace "*" with specific origins for production.
@@ -231,3 +238,8 @@ def results_summary(hours: int = 24):
         "window_hours": hours,
         "clinics": clinics
     }
+
+
+@app.get("/", response_class=HTMLResponse)
+def serve_dashboard():
+    return FileResponse(FRONTEND_DIR / "dashboard.html")
