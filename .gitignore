@@ -12,6 +12,12 @@ results.db
 # frontend junk
 frontend/npm
 frontend/cls
+frontend/package-lock.json
+
+# not part of app core logic
+show_predictions.py
+simulate_predictions.py
+
 
 # python
 __pycache__/
