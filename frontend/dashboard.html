@@ -1,0 +1,236 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>Amanicare — Clinic Summary Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .card {
+            max-width: 1100px;
+            margin: 20px auto;
+        }
+
+        .small-muted {
+            color: #666;
+            font-size: .9rem;
+        }
+
+        .badge-normal {
+            background: #198754;
+            color: white;
+        }
+
+        .badge-abnormal {
+            background: #dc3545;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card p-4">
+        <h3>Amanicare — Clinic Summary Dashboard</h3>
+        <p class="small-muted">Aggregated abnormal rates per clinic (recent window).</p>
+
+        <div class="row g-2 align-items-center mb-3">
+            <div class="col-auto">
+                <label class="form-label">Window (hours)</label>
+                <input id="hours" class="form-control" value="24" type="number" min="1" style="width:120px">
+            </div>
+            <div class="col-auto">
+                <label class="form-label">&nbsp;</label>
+                <button id="btnLoad" class="btn btn-primary d-block">Load Summary</button>
+            </div>
+            <div class="col-auto ms-auto text-end">
+                <div class="small-muted">API: <code>/results/summary?hours=...</code></div>
+            </div>
+        </div>
+
+        <div id="summaryArea">
+            <div class="text-muted">Press <strong>Load Summary</strong> to fetch data from the inference node.</div>
+        </div>
+
+        <hr>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Clinic table</h6>
+                <div id="tableArea" style="max-height:320px; overflow:auto"></div>
+            </div>
+            <div class="col-md-6">
+                <h6>Abnormal rate chart</h6>
+                <canvas id="chart" style="max-height:320px"></canvas>
+            </div>
+        </div>
+
+        <div class="mt-3 small-muted">Note: Data is generated from <code>/results</code> table. Ensure the inference
+            service is running at <code>http://127.0.0.1:8001</code>.</div>
+    </div>
+
+    <script>
+        (() => {
+            if (window.__AMANICARE_INIT) {
+                console.log("[AMANICARE] script already initialized — skipping.");
+                return;
+            }
+            window.__AMANICARE_INIT = true;
+
+            const API_BASE = "http://127.0.0.1:8001";
+            let chartInstance = null;
+
+            function renderTable(clinics) {
+                try {
+                    const area = document.getElementById("tableArea");
+                    if (!area) { console.warn("[AMANICARE] tableArea not found"); return; }
+                    if (!clinics || clinics.length === 0) {
+                        area.innerHTML = '<div class="small-muted">No clinic data in the selected window.</div>';
+                        return;
+                    }
+                    let html = `<table class="table table-sm">
+    <thead><tr><th>Clinic</th><th>Total</th><th>Abnormal</th><th>Abnormal rate</th></tr></thead><tbody>`;
+                    clinics.forEach(c => {
+                        html += `<tr>
+      <td>${c.clinic_id}</td>
+      <td>${c.total}</td>
+      <td>${c.abnormal}</td>
+      <td>${(c.abnormal_rate * 100).toFixed(1)}%</td>
+    </tr>`;
+                    });
+                    html += `</tbody></table>`;
+                    area.innerHTML = html;
+                } catch (err) {
+                    console.error("[AMANICARE] renderTable error:", err);
+                }
+            }
+
+            // === REPLACED renderChart: shows tiny visible bars for 0% and real value in tooltip ===
+            function renderChart(clinics) {
+                try {
+                    const canvas = document.getElementById('chart');
+                    if (!canvas) { console.warn("[AMANICARE] chart canvas not found"); return; }
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) { console.warn("[AMANICARE] canvas context missing"); return; }
+
+                    if (chartInstance) {
+                        try { chartInstance.destroy(); } catch (e) { /* ignore */ }
+                        chartInstance = null;
+                    }
+
+                    if (!clinics || clinics.length === 0) {
+                        chartInstance = new Chart(ctx, {
+                            type: 'bar',
+                            data: { labels: ['no data'], datasets: [{ label: 'Abnormal rate', data: [0.01] }] },
+                            options: { scales: { y: { beginAtZero: true, max: 1 } } }
+                        });
+                        return;
+                    }
+
+                    const labels = clinics.map(c => c.clinic_id);
+                    const trueValues = clinics.map(c => (typeof c.abnormal_rate === 'number' ? c.abnormal_rate : 0));
+                    // visible values: replace 0 with a tiny positive number so a bar is rendered
+                    const visibleValues = trueValues.map(v => v === 0 ? 0.01 : v);
+
+                    // color zero-bars gray, non-zero bars red
+                    const backgroundColors = trueValues.map(v => v === 0 ? 'rgba(108,117,125,0.6)' : 'rgba(220,53,69,0.9)');
+
+                    chartInstance = new Chart(ctx, {
+                        type: 'bar',
+                        data: {
+                            labels,
+                            datasets: [{
+                                label: 'Abnormal rate (0–1)',
+                                data: visibleValues,
+                                actualData: trueValues, // custom field used by tooltip callback
+                                backgroundColor: backgroundColors,
+                            }]
+                        },
+                        options: {
+                            indexAxis: 'y',
+                            scales: {
+                                x: {
+                                    beginAtZero: true,
+                                    max: 1,
+                                    ticks: {
+                                        callback: v => (v * 100) + '%'
+                                    }
+                                }
+                            },
+                            plugins: {
+                                legend: { display: false },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function (context) {
+                                            const actual = context.dataset.actualData ? context.dataset.actualData[context.dataIndex] : context.parsed.x;
+                                            return 'Abnormal rate: ' + (actual * 100).toFixed(1) + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } catch (err) {
+                    console.error("[AMANICARE] renderChart error:", err);
+                }
+            }
+
+            async function loadSummary() {
+                console.log("[AMANICARE] loadSummary start");
+                const hours = Number(document.getElementById('hours').value) || 24;
+                const area = document.getElementById('summaryArea');
+                if (area) area.innerHTML = 'Loading summary…';
+
+                try {
+                    // single fetch, log outcome
+                    const res = await fetch(`${API_BASE}/results/summary?hours=${hours}`);
+                    console.log("[AMANICARE] fetch status", res.status);
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const body = await res.json();
+                    const clinics = body.clinics || [];
+                    if (area) area.innerHTML = `<div class="small-muted">Window: last ${body.window_hours} hours — Clinics: ${clinics.length}</div>`;
+
+                    // render table first — DOM update guaranteed
+                    renderTable(clinics);
+
+                    // delay chart render just enough for layout to stabilise
+                    setTimeout(() => {
+                        renderChart(clinics);
+                    }, 120);
+                    console.log("[AMANICARE] loadSummary done");
+                } catch (err) {
+                    console.error("[AMANICARE] loadSummary ERROR:", err);
+                    if (area) area.innerHTML = `<div class="text-danger">Failed to load: ${err}</div>`;
+                    renderTable([]);
+                    // try safe chart render
+                    try { renderChart([]); } catch (e) { /* ignore */ }
+                }
+            }
+
+            // bind UI
+            const loadBtn = document.getElementById('btnLoad');
+            if (loadBtn) {
+                // remove existing listeners if any (avoid duplicates)
+                loadBtn.replaceWith(loadBtn.cloneNode(true));
+                document.getElementById('btnLoad').addEventListener('click', loadSummary);
+            } else {
+                console.warn("[AMANICARE] btnLoad not found");
+            }
+
+            // don't auto-run multiple times; run once on page load safely
+            window.addEventListener('load', () => {
+                setTimeout(() => {
+                    try {
+                        loadSummary();
+                    } catch (e) { console.error("[AMANICARE] initial load failed:", e); }
+                }, 300);
+            });
+
+            // expose for debugging
+            window.__AMANICARE = { loadSummary, renderTable, renderChart };
+        })();
+    </script>
+
+</body>
+
+</html>

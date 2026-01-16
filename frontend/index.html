@@ -1,0 +1,194 @@
+<!doctype html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Amanicare — Abnormal Lab Flags</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    .badge-normal {
+      background: #198754;
+      color: white;
+    }
+
+    /* green */
+    .badge-abnormal {
+      background: #dc3545;
+      color: white;
+    }
+
+    /* red */
+    .explain-table td,
+    .explain-table th {
+      vertical-align: middle;
+    }
+
+    .small-muted {
+      color: #666;
+      font-size: .9rem;
+    }
+  </style>
+</head>
+
+<body class="container py-4">
+  <h2>Amanicare — Abnormal Lab Flags</h2>
+  <p class="small-muted">Privacy-preserving triage: flags abnormal lab patterns for rapid review (NOT a diagnosis).</p>
+
+  <div class="card p-3 mb-3" style="max-width:900px">
+    <div class="row g-2">
+      <div class="col-md-3">
+        <label class="form-label">Glucose (mg/dL)</label>
+        <input id="glucose" class="form-control" value="95" type="number">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Hemoglobin (g/dL)</label>
+        <input id="hemoglobin" class="form-control" value="14" type="number">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">WBC (x10^9/L)</label>
+        <input id="wbc" class="form-control" value="7" type="number">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Creatinine (mg/dL)</label>
+        <input id="creatinine" class="form-control" value="1.0" step="0.1" type="number">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label">BUN (mg/dL)</label>
+        <input id="bun" class="form-control" value="14" type="number">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">CRP (mg/L)</label>
+        <input id="crp" class="form-control" value="3" type="number">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">HbA1c (%)</label>
+        <input id="hba1c" class="form-control" value="5.4" step="0.1" type="number">
+      </div>
+
+      <div class="col-12 mt-2">
+        <button id="btn" class="btn btn-primary">Check result</button>
+        <span id="spinner" class="ms-3" style="display:none">⏳ Checking…</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultCard" class="card p-3" style="max-width:900px; display:none">
+    <div class="d-flex justify-content-between align-items-center">
+      <div>
+        <h5 id="verdict" class="m-0"></h5>
+        <div class="small-muted" id="meta"></div>
+      </div>
+      <div class="text-end">
+        <div id="scoreBox" class="small-muted"></div>
+        <div id="isoBox" class="small-muted"></div>
+      </div>
+    </div>
+
+    <hr>
+
+    <div>
+      <h6>Top contributing features</h6>
+      <table class="table table-sm explain-table">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Value</th>
+            <th>z-score</th>
+          </tr>
+        </thead>
+        <tbody id="explainBody"></tbody>
+      </table>
+    </div>
+
+    <div class="small-muted">Prediction id: <span id="predId"></span> &nbsp; timestamp: <span id="predTs"></span></div>
+  </div>
+
+  <div id="errorBox" class="alert alert-danger mt-3" style="display:none;max-width:900px"></div>
+
+  <script>
+    const API_URL = "http://127.0.0.1:8001/predict"; // change if your inference node runs elsewhere
+
+    function setLoading(isLoading) {
+      document.getElementById("btn").disabled = isLoading;
+      document.getElementById("spinner").style.display = isLoading ? "inline" : "none";
+    }
+
+    function showError(msg) {
+      const el = document.getElementById("errorBox");
+      el.style.display = "block";
+      el.innerText = (msg && msg.toString()) || "Unknown error";
+    }
+
+    function clearError() {
+      const el = document.getElementById("errorBox");
+      el.style.display = "none";
+      el.innerText = "";
+    }
+
+    function renderResult(json) {
+      document.getElementById("resultCard").style.display = "block";
+      document.getElementById("predId").innerText = json.id || "";
+      document.getElementById("predTs").innerText = json.ts || "";
+      // verdict badge
+      const verdict = json.anomaly ? "Abnormal" : "Normal";
+      const badgeClass = json.anomaly ? "badge-abnormal" : "badge-normal";
+      document.getElementById("verdict").innerHTML = `<span class="badge ${badgeClass}">${verdict}</span>`;
+      document.getElementById("meta").innerText = json.iso_anomaly ? "IsolationForest also flagged this sample." : "IsolationForest did not flag this sample.";
+
+      document.getElementById("scoreBox").innerText = `Model score: ${(json.score || 0).toFixed(3)}`;
+      document.getElementById("isoBox").innerText = `Iso score: ${(json.iso_score || 0).toFixed(3)}`;
+
+      // explanation table
+      const tbody = document.getElementById("explainBody");
+      tbody.innerHTML = "";
+      if (Array.isArray(json.explanation) && json.explanation.length) {
+        json.explanation.forEach(row => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `<td>${row.feature}</td><td>${row.value}</td><td>${row.z}</td>`;
+          tbody.appendChild(tr);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="3" class="small-muted">No explanation available</td></tr>`;
+      }
+    }
+
+    async function checkLab() {
+      clearError();
+      setLoading(true);
+      // build payload using the exact feature names your model expects
+      const payload = {
+        glucose: parseFloat(document.getElementById("glucose").value) || 0,
+        hemoglobin: parseFloat(document.getElementById("hemoglobin").value) || 0,
+        wbc: parseFloat(document.getElementById("wbc").value) || 0,
+        creatinine: parseFloat(document.getElementById("creatinine").value) || 0,
+        bun: parseFloat(document.getElementById("bun").value) || 0,
+        crp: parseFloat(document.getElementById("crp").value) || 0,
+        hba1c: parseFloat(document.getElementById("hba1c").value) || 0
+      };
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(`HTTP ${res.status}: ${txt}`);
+        }
+        const j = await res.json();
+        renderResult(j);
+      } catch (err) {
+        showError(err.message || err);
+        console.error("Prediction error:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    document.getElementById("btn").addEventListener("click", checkLab);
+  </script>
+</body>
+
+</html>
