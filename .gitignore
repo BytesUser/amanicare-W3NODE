@@ -25,3 +25,10 @@ __pycache__/
 
 # misc
 .env
+
+cls/
+git/
+simulate_live.py
+__pycache__/
+*.db
+
