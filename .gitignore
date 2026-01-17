@@ -19,6 +19,13 @@ show_predictions.py
 simulate_predictions.py
 
 
+#files
+cls/
+git/
+simulate_live.py
+__pycache__/
+*.db
+
 # python
 __pycache__/
 *.pyc
@@ -26,9 +33,5 @@ __pycache__/
 # misc
 .env
 
-cls/
-git/
-simulate_live.py
-__pycache__/
-*.db
+
 
