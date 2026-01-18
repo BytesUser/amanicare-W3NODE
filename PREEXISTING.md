@@ -1,15 +1,22 @@
 # Pre-existing Work Disclosure
 
-This repository contains a **practice implementation** created before the W3Node Hackathon
-for learning, experimentation, and architecture validation.
+Project: Amanicare  
+Author: Pelah Kapuya
 
-- Branch: `practice`
-- Purpose: Dry-run of the full system to understand feasibility and flow
-- Status: NOT the submission branch
+The following work was completed BEFORE the hackathon:
 
-All hackathon submission work will be recreated during the event on a fresh
-branch named `hackathon/YYYY-MM-DD`, with live commits during the official
-hackathon timeframe.
+- FastAPI backend for lab-result ingestion and anomaly detection
+- Synthetic clinical lab data generator
+- Trained anomaly detection models (Isolation Forest + classifier)
+- SQLite persistence for predictions and summaries
+- Basic web dashboard for viewing abnormal rates and explanations
 
-No pre-existing code from this branch will be directly submitted without
-being re-implemented during the hackathon.
+The following work WILL be done DURING the hackathon:
+
+- Rebuilding the system from scratch to demonstrate understanding
+- Mobile-friendly responsive UI
+- Single-command deployment for judges
+- Live demo link (hosted)
+- Documentation, demo flow, and explanation for non-technical judges
+
+All hackathon work will be committed to a separate branch with timestamps.
