@@ -31,7 +31,7 @@ def save_prediction(data: dict):
     """, (
         data["id"],
         data["ts"],
-        data.get("clinic_id", "unknown"),
+        data["clinic_id"],
         int(data["anomaly"]),
         float(data["score"]),
         int(data["iso_anomaly"]),

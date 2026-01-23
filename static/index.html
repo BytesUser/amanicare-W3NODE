@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amanicare – Federated Blood Test Anomaly Detection</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  padding: 20px;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+header {
+  text-align: center;
+  color: white;
+  margin-bottom: 40px;
+  animation: fadeInDown 0.8s ease;
+}
+
+header h1 {
+  font-size: 3rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  opacity: 0.95;
+  font-weight: 300;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 25px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  animation: fadeInUp 0.6s ease;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+}
+
+.card h2 {
+  color: #667eea;
+  margin-bottom: 20px;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card h2::before {
+  content: '';
+  width: 4px;
+  height: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 2px;
+}
+
+.hidden {
+  display: none;
+}
+
+.privacy-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, #2e7d32 0%, #43a047 100%);
+  color: white;
+  padding: 10px 18px;
+  border-radius: 25px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  margin-top: 15px;
+  box-shadow: 0 4px 12px rgba(46,125,50,0.3);
+}
+
+input[type="file"] {
+  width: 100%;
+  padding: 15px;
+  border: 2px dashed #667eea;
+  border-radius: 12px;
+  background: #f8f9ff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+}
+
+input[type="file"]:hover {
+  border-color: #764ba2;
+  background: #f0f2ff;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 14px 18px;
+  border: 2px solid #e0e0e0;
+  border-radius: 10px;
+  font-size: 1rem;
+  margin-bottom: 20px;
+  transition: all 0.3s ease;
+}
+
+input[type="text"]:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
+}
+
+table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin-top: 20px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+table thead {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+table th {
+  color: white;
+  padding: 16px 12px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 0.95rem;
+}
+
+table tbody tr {
+  transition: background 0.2s ease;
+}
+
+table tbody tr:hover {
+  background: #f8f9ff;
+}
+
+table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.anomaly-true {
+  display: inline-block;
+  background: linear-gradient(135deg, #d32f2f 0%, #c62828 100%);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(211,47,47,0.3);
+}
+
+.anomaly-false {
+  display: inline-block;
+  background: linear-gradient(135deg, #2e7d32 0%, #388e3c 100%);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: 0 2px 8px rgba(46,125,50,0.3);
+}
+
+button {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 8px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102,126,234,0.3);
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102,126,234,0.4);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+#preview {
+  margin-top: 15px;
+  padding: 15px;
+  background: #f8f9ff;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.diagram {
+  background: linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%);
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.1rem;
+  color: #667eea;
+  font-weight: 500;
+  margin: 20px 0;
+  border: 2px solid #e0e7ff;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.note {
+  background: #fff3e0;
+  border-left: 4px solid #ff9800;
+  padding: 15px;
+  border-radius: 8px;
+  margin-top: 20px;
+  font-size: 0.9rem;
+  color: #e65100;
+}
+
+.steps {
+  list-style: none;
+  margin-top: 15px;
+}
+
+.steps li {
+  padding: 12px 15px 12px 40px;
+  margin-bottom: 10px;
+  background: #f8f9ff;
+  border-radius: 8px;
+  position: relative;
+  color: #666;
+}
+
+.steps li::before {
+  content: '⏳';
+  position: absolute;
+  left: 12px;
+  font-size: 1.2rem;
+}
+
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  header {
+    margin-bottom: 25px;
+  }
+
+  header h1 {
+    font-size: 2rem;
+  }
+
+  .subtitle {
+    font-size: 0.9rem;
+    padding: 0 10px;
+  }
+
+  .card {
+    padding: 20px 15px;
+    margin-bottom: 15px;
+  }
+
+  .card h2 {
+    font-size: 1.2rem;
+  }
+
+  /* Make table scrollable horizontally */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    font-size: 0.8rem;
+    min-width: 600px;
+  }
+
+  table th, table td {
+    padding: 10px 6px;
+    font-size: 0.8rem;
+  }
+
+  button {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .privacy-badge {
+    font-size: 0.85rem;
+    padding: 8px 14px;
+  }
+
+  .diagram {
+    font-size: 0.9rem;
+    padding: 20px 15px;
+  }
+
+  .note {
+    font-size: 0.85rem;
+    padding: 12px;
+  }
+
+  input[type="text"] {
+    padding: 12px 14px;
+    font-size: 0.9rem;
+  }
+
+  .modal-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+
+  .modal-header {
+    padding: 20px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.2rem;
+  }
+
+  .modal-body {
+    padding: 20px;
+    max-height: calc(90vh - 80px);
+  }
+
+  .detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px;
+  }
+
+  .detail-value {
+    text-align: left;
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  body {
+    padding: 8px;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  .subtitle {
+    font-size: 0.8rem;
+  }
+
+  .card {
+    padding: 15px 12px;
+    margin-bottom: 12px;
+  }
+
+  .card h2 {
+    font-size: 1.1rem;
+  }
+
+  .card h2::before {
+    width: 3px;
+    height: 20px;
+  }
+
+  table {
+    font-size: 0.75rem;
+    min-width: 550px;
+  }
+
+  table th, table td {
+    padding: 8px 4px;
+    font-size: 0.75rem;
+  }
+
+  button {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+
+  .anomaly-true, .anomaly-false {
+    font-size: 0.7rem;
+    padding: 4px 8px;
+  }
+
+  .privacy-badge {
+    font-size: 0.75rem;
+    padding: 6px 12px;
+  }
+
+  input[type="file"] {
+    padding: 10px;
+    font-size: 0.85rem;
+  }
+
+  input[type="text"] {
+    padding: 10px 12px;
+    font-size: 0.85rem;
+  }
+
+  .diagram {
+    font-size: 0.75rem;
+    padding: 15px 10px;
+    word-break: break-word;
+  }
+
+  .note {
+    font-size: 0.75rem;
+    padding: 10px;
+  }
+
+  .modal-content {
+    width: 98%;
+    max-width: none;
+    margin: 5px;
+    max-height: 95vh;
+    border-radius: 12px;
+  }
+
+  .modal-header {
+    padding: 15px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .close-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 1.3rem;
+  }
+
+  .modal-body {
+    padding: 15px;
+    max-height: calc(95vh - 70px);
+  }
+
+  .detail-row {
+    padding: 10px;
+    margin-bottom: 8px;
+    border-left-width: 3px;
+  }
+
+  .detail-label {
+    font-size: 0.8rem;
+  }
+
+  .detail-value {
+    font-size: 0.85rem;
+  }
+
+  .detail-value.highlight {
+    padding: 5px 12px;
+    font-size: 0.8rem;
+  }
+
+  #preview {
+    font-size: 0.8rem;
+    padding: 12px;
+  }
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content {
+  background: white;
+  padding: 0;
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+  position: relative;
+}
+
+.modal-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 25px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  padding: 0;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: rotate(90deg);
+}
+
+.modal-body {
+  padding: 30px;
+  overflow-y: auto;
+  max-height: calc(85vh - 90px);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  margin-bottom: 12px;
+  background: #f8f9ff;
+  border-radius: 10px;
+  border-left: 4px solid #667eea;
+  transition: all 0.2s ease;
+}
+
+.detail-row:hover {
+  background: #f0f2ff;
+  transform: translateX(5px);
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #667eea;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  color: #333;
+  font-size: 1rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.detail-value.highlight {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+<h1>Amanicare</h1>
+<p class="subtitle">Privacy-Preserving Blood Test Anomaly Detection (Federated Learning Demo)</p>
+</header>
+
+<section class="card">
+<h2>Upload Blood Test CSV</h2>
+<input type="file" id="csvFile" accept=".csv" />
+<p class="privacy-badge">🔒 Patient data never leaves this device</p>
+<div id="preview"></div>
+</section>
+
+<section class="card hidden" id="resultsSection">
+<h2>Results Dashboard</h2>
+<input type="text" id="search" placeholder="Search Patient ID…"/>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr>
+<th>Patient</th>
+<th>Anomaly</th>
+<th>Flagged Tests</th>
+<th>Recommendation</th>
+<th>Action</th>
+</tr>
+</thead>
+<tbody id="resultsTable"></tbody>
+</table>
+</div>
+</section>
+
+<section class="card">
+<h2>How Federated Learning Works (Demo)</h2>
+<p>
+Each clinic analyzes patient data locally. Only anonymous model updates
+(not patient data) are shared to improve a global model.
+</p>
+
+<div class="diagram">
+Clinic Device → Local Model → 🔒 Model Update → Aggregator → Improved Model
+</div>
+
+<p class="note">
+⚠️ This demo simulates federated learning. Production systems use secure
+aggregation and real model averaging.
+</p>
+</section>
+</div>
+
+<!-- Patient Detail Modal -->
+<div id="patientModal" class="modal-overlay hidden" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3>Patient Details</h3>
+      <button id="closeModalBtn" class="close-btn">×</button>
+    </div>
+    <div class="modal-body" id="patientDetails"></div>
+  </div>
+</div>
+
+<script>
+async function uploadCSV() {
+  const fileInput = document.getElementById("csvFile");
+  const file = fileInput.files[0];
+  if (!file) return alert("Please select a CSV file!");
+
+  const preview = document.getElementById("preview");
+  preview.textContent = `Loading ${file.name}...`;
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  try {
+    const res = await fetch("/upload_csv", {method: "POST", body: formData});
+    const data = await res.json();
+
+    if (data.error) {
+      alert(data.error);
+      preview.textContent = "";
+      return;
+    }
+
+    preview.textContent = `✓ Successfully loaded ${data.length} patient records`;
+    document.getElementById("resultsSection").classList.remove("hidden");
+
+    const tbody = document.getElementById("resultsTable");
+    tbody.innerHTML = "";
+
+    data.forEach(d => {
+      const anomalyClass = d.anomaly ? 'anomaly-true' : 'anomaly-false';
+      const anomalyText = d.anomaly ? 'ANOMALY' : 'NORMAL';
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td><strong>${d.patient_id}</strong></td>
+        <td><span class="${anomalyClass}">${anomalyText}</span></td>
+        <td>${d.flagged_tests}</td>
+        <td>${d.recommendation}</td>
+        <td><button class="view-btn">View Details</button></td>
+      `;
+
+      // Add click event to the button
+      const viewBtn = row.querySelector('.view-btn');
+      viewBtn.addEventListener('click', () => viewPatient(d));
+
+      tbody.appendChild(row);
+    });
+
+    // Add search functionality
+    document.getElementById("search").addEventListener("input", function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      const rows = tbody.getElementsByTagName("tr");
+
+      for (let row of rows) {
+        const patientId = row.cells[0].textContent.toLowerCase();
+        if (patientId.includes(searchTerm)) {
+          row.style.display = "";
+        } else {
+          row.style.display = "none";
+        }
+      }
+    });
+
+  } catch (err) {
+    preview.textContent = "Error: " + err.message;
+  }
+}
+
+document.getElementById("csvFile").addEventListener("change", uploadCSV);
+
+function viewPatient(data) {
+  const modal = document.getElementById("patientModal");
+  const details = document.getElementById("patientDetails");
+
+  // Create formatted details HTML
+  details.innerHTML = `
+    <div class="detail-row">
+      <span class="detail-label">Patient ID</span>
+      <span class="detail-value highlight">${data.patient_id}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Anomaly Status</span>
+      <span class="detail-value">
+        <span class="${data.anomaly ? 'anomaly-true' : 'anomaly-false'}">
+          ${data.anomaly ? 'ANOMALY DETECTED' : 'NORMAL'}
+        </span>
+      </span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Flagged Tests</span>
+      <span class="detail-value">${data.flagged_tests}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Recommendation</span>
+      <span class="detail-value">${data.recommendation}</span>
+    </div>
+    ${data.severity ? `
+    <div class="detail-row">
+      <span class="detail-label">Severity</span>
+      <span class="detail-value">${data.severity}</span>
+    </div>` : ''}
+    ${data.notes ? `
+    <div class="detail-row">
+      <span class="detail-label">Notes</span>
+      <span class="detail-value">${data.notes}</span>
+    </div>` : ''}
+  `;
+
+  modal.style.display = 'flex';
+  modal.classList.remove("hidden");
+  document.body.style.overflow = 'hidden'; // Prevent background scrolling
+}
+
+function closeModal() {
+  const modal = document.getElementById("patientModal");
+  modal.style.display = 'none';
+  modal.classList.add("hidden");
+  document.body.style.overflow = ''; // Restore scrolling
+}
+
+// Close button click event
+document.getElementById("closeModalBtn").addEventListener("click", closeModal);
+
+// Close modal when clicking outside
+document.getElementById("patientModal").addEventListener("click", function(e) {
+  if (e.target === this) {
+    closeModal();
+  }
+});
+
+// Close modal with Escape key
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") {
+    const modal = document.getElementById("patientModal");
+    if (modal.style.display === 'flex') {
+      closeModal();
+    }
+  }
+});
+</script>
+</body>
+</html>

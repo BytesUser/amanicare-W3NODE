@@ -1,37 +1,16 @@
-# virtual env
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.venv/
 venv/
+env/
+ENV/
+*.egg-info/
 
-# databases
-*.db
+# System
+.DS_Store
+Thumbs.db
 
-# outputs
-output/
-predictions.db
-results.db
-
-# frontend junk
-frontend/npm
-frontend/cls
-frontend/package-lock.json
-
-# not part of app core logic
-show_predictions.py
-simulate_predictions.py
-
-
-#files
-cls/
-git/
-simulate_live.py
-__pycache__/
-*.db
-
-# python
-__pycache__/
-*.pyc
-
-# misc
-.env
-
-
-
+# Jupyter
+.ipynb_checkpoints
